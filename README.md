@@ -187,24 +187,6 @@
 * │       ├── Src/
 * │       │   └── hub_main.c    # Разбор Message RAM, EXTI_NSS (Т3), CAN_SYNC (Т4, ID 0x000)
 * │       └── hub-G474.ioc      # Файл конфигурации проекта STM32CubeMX
-* │
-* │ ── hardware/                 # АППАРАТНАЯ ЧАСТЬ (Схемы и Текстолит)
-* │   ├── documentation/        # Даташиты на критические компоненты (uA9639, NSiP1042, MCP6002 и т.д.)
-* │   ├── schematics/           # Принципиальные электрические схемы (KiCad / Altium)
-* │   │   ├── master_board.pdf  # Схема вычислителя, пульта MPG через RJ45 и крипто-островка B1
-* │   │   └── hub_board.pdf     # Схема шлюза G474, оптического трансивера и ИОН REF3033
-* │   └── layout/               # Топология печатных плат (4 слоя, коаксиальный экран трека B1)
-* │       ├── Gerber/           # Файлы для производства (Герберы + Сверловка)
-* │       └── Centroid/         # Файлы координат компонентов (Pick and Place) для сборки
-* │
-* │ ── config/                   # ЦИФРОВЫЕ ПАСПОРТА ПЛАТЫ
-* │  └── Board.json            # Промышленная JSON-спецификация периферии хаба G474
-* │
-* │ ── LICENSE                   # Текст лицензии (MIT / Авторское право)
 
-Ссылки:
-      CAN FD виртуальные оси в grblHAL межпроцессорная шина SPI1 + сопроцессор
-- https://github.com/grblHAL/core/discussions/524#1
-- https://github.com/eghasemy/core/blob/toolchange_persistent_tool/S_CURVE_TESTING_GUIDE.md#1
-- Справочное руководство RM0440: Содержит полное описание регистров и памяти для всех трех FDCAN-модулей https://www.farnell.com/datasheets/3182254.pdf
+
 
