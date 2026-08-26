@@ -1,0 +1,67 @@
+name: CI - Embedded Build Check
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/ci-build.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi build-essential
+
+      - name: Show toolchain version
+        run: |
+          arm-none-eabi-gcc --version
+
+      - name: Try compile master-H723 (informational)
+        working-directory: firmware/master-H723
+        run: |
+          set -e
+          mkdir -p build_master/obj || true
+          echo "Compiling .c files (no linker) for master-H723 (cortex-m7)..."
+          SRC_FILES=$(find . -name '*.c' || true)
+          if [ -z "$SRC_FILES" ]; then
+            echo "No C files found under firmware/master-H723; skipping"
+          else
+            for f in $SRC_FILES; do
+              echo "Compiling $f"
+              arm-none-eabi-gcc -c -mcpu=cortex-m7 -mthumb -g -O2 -Wall -Wextra -IInc -I. -o build_master/obj/$(basename ${f%.*}).o $f || true
+            done
+          fi
+
+      - name: Try compile hub-G474 (informational)
+        working-directory: firmware/hub-G474
+        run: |
+          set -e
+          mkdir -p build_hub/obj || true
+          echo "Compiling .c files (no linker) for hub-G474 (cortex-m4)..."
+          SRC_FILES=$(find . -name '*.c' || true)
+          if [ -z "$SRC_FILES" ]; then
+            echo "No C files found under firmware/hub-G474; skipping"
+          else
+            for f in $SRC_FILES; do
+              echo "Compiling $f"
+              arm-none-eabi-gcc -c -mcpu=cortex-m4 -mthumb -g -O2 -Wall -Wextra -IInc -I. -o build_hub/obj/$(basename ${f%.*}).o $f || true
+            done
+          fi
+
+      - name: Output some diagnostics
+        run: |
+          echo "--- master build artifacts ---"
+          ls -la firmware/master-H723/build_master || true
+          echo "--- hub build artifacts ---"
+          ls -la firmware/hub-G474/build_hub || true
+
+      - name: Complete
+        run: |
+          echo "CI check finished. Note: This job compiles .c files only (no HAL/STM32 vendor drivers). Failures due to missing HAL headers are expected; check logs for errors to iterate fixes."
