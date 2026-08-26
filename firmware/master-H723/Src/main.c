@@ -323,4 +323,52 @@ CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 DWT->CTRL |= DWT_CTRL_CYCCNTMsk;
 }
 
+//на стороне Мастера (STM32H723) изменения в код инициализации мастера, чтобы задействовать физическую линию сброса:
+int main(void)
+{
+    HAL_Init();
+    
+    /* 1. ПЕРВЫМ ДЕЛОМ ВГОНЯЕМ ХАБ В ЖЕСТКИЙ СБРОС */
+    // Настраиваем PD13 на выход и прижимаем к нулю
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_13;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET); // Хаб заперт в Reset
+
+    /* 2. Спокойно настраиваем такты мастера 550 МГц и включаем MCO1 (25 МГц) */
+    SystemClock_Config();
+    master_dwt_init();
+
+    /* Инициализация остальной периферии мастера... */
+    MX_DMA_Init();
+    MX_SPI2_Init();
+    MX_I2C1_Init();
+    
+    /* 3. ДАЕМ СТАБИЛИЗИРОВАТЬСЯ ЧАСТОТЕ MCO1 И ОТПУСКАЕМ СБРОС ХАБА */
+    HAL_Delay(10); // Пауза 10 мс
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET); // Хаб G474 просыпается!
+
+    /* 4. Ждем, пока хаб инициализирует ФАПЧ 170 МГц и поднимет линию READY (PD3) */
+    uint32_t startup_timeout = HAL_GetTick();
+    while (HAL_GPIO_ReadPin(READY_PORT, READY_PIN) == GPIO_PIN_RESET) {
+        if ((HAL_GetTick() - startup_timeout) > 500) {
+            // Если хаб не ответил за 500 мс — уходим в критическую аварию
+            sys.state = STATE_ALARM;
+            break;
+        }
+    }
+
+    /* 5. Запуск основного ядра ЧПУ */
+    grbl_init();
+    
+    while (1) {
+        grbl_run();
+        // ... фоновые воркеры ...
+    }
+}
+
 
