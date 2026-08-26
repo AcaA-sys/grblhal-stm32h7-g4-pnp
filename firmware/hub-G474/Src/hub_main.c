@@ -77,7 +77,7 @@ void hub_init(void)
 
     // Запускаем наносекундный счетчик DWT хаба (170 МГц)
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CTRL |= DWT_CTRL_CYCCNTMsk; // <- оставлено как в оригинале; при необходимости заменить на DWT_CTRL_CYCCNTENA_Msk
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; // Enable cycle counter
 
     // Зажигаем белый светодиод оригинальности платы (PA3 через инверсный буфер)
     HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
