@@ -14,7 +14,7 @@
 #include <string.h>
 
 /* Экспорт аппаратных хэндлов периферии (CubeMX) */
-extern SPI_HandleTypeDef  hspi3;   // Slave Mode, Hardware NSS Enabled (PB12)
+extern SPI_HandleTypeDef  hspi1;   // Slave Mode, Hardware NSS Enabled (PB12)
 extern CRC_HandleTypeDef  hcrc;    // Аппаратный блок CRC16-CCITT (Полином 0x1021)
 extern FDCAN_HandleTypeDef hfdcan1; // Магистраль Портала (X/Y BLDC на медь)
 extern FDCAN_HandleTypeDef hfdcan2; // Магистраль Головки (Z/R и датчики на оптику)
@@ -85,9 +85,9 @@ void hub_init(void)
     // Поднимаем линию READY (PB2) в состояние HIGH — даем мастеру H723 зеленый свет на старт grblHAL
     HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_SET);
 
-    /* ЗАПУСК ДВУНАПРАВЛЕННОГО КОЛЬЦЕВОГО ОБМЕНА SPI3 DMA SLAVE */
+    /* ЗАПУСК ДВУНАПРАВЛЕННОГО КОЛЬЦЕВОГО ОБМЕНА SPI1 DMA SLAVE */
     // Хаб встает в бесконечный цикл ожидания падения NSS от мастера
-    HAL_SPI_TransmitReceive_DMA(&hspi3, (uint8_t*)&tx_telemetry_back, (uint8_t*)&rx_packet, sizeof(CNC_Packet_t));
+    HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t*)&tx_telemetry_back, (uint8_t*)&rx_packet, sizeof(CNC_Packet_t));
 }
 
 /**
@@ -107,7 +107,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 /**
   * @brief  ВЫСОКОПРИОРИТЕТНЫЙ СКВОЗНОЙ МАРШРУТИЗАТОР.
-  *         Вызывается аппаратно по окончании приема 48 байт пакета по SPI3 DMA.
+  *         Вызывается аппаратно по окончании приема 48 байт пакета по SPI1 DMA.
   * @param  hspi Указатель на хэндл SPI
   * @retval None
   */
