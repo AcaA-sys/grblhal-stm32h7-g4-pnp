@@ -241,4 +241,53 @@ while (1)
 __NOP();
 }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Внутри hub_main.c хаба G474:
+
+extern volatile bool fdcan1_active;
+extern volatile bool fdcan2_active;
+
+void hub_read_hardware_config(void)
+{
+    // Читаем ТОЛЬКО ДЖАМПЕР 3 на пине PC13 (Автопоиск шин)
+    if (HAL_GPIO_ReadPin(CONFIG_PORT_C, CONFIG_PIN_BIT3) == GPIO_PIN_RESET) 
+    {
+        // --- РЕЖИМ АВТОПОИСКА АКТИВИРОВАН (Джампер PC13 на GND) ---
+        // Пингуем FDCAN1 (Портал)
+        HAL_FDCAN_Start(&hfdcan1);
+        FDCAN_TxHeaderTypeDef test_header = { .Identifier = 0x7FF, .IdType = FDCAN_STANDARD_ID, .DataLength = FDCAN_DLC_BYTES_0 };
+        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &test_header, NULL);
+        HAL_Delay(2);
+        
+        if ((hfdcan1.Instance->PSR & FDCAN_PSR_LEC) != 0x11) { // Если ACK получен
+            fdcan1_active = true; 
+        } else {
+            HAL_FDCAN_Stop(&hfdcan1); // Шина пустая, отключаем
+        }
+
+        // Пингуем FDCAN2 (Оптика Головки)
+        HAL_FDCAN_Start(&hfdcan2);
+        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &test_header, NULL);
+        HAL_Delay(2);
+        
+        if ((hfdcan2.Instance->PSR & FDCAN_PSR_LEC) != 0x11) {
+            fdcan2_active = true; 
+        } else {
+            HAL_FDCAN_Stop(&hfdcan2);
+        }
+    }
+    else 
+    {
+        // --- ШТАТНЫЙ РЕЖИМ (Джампер PC13 снят) ---
+        fdcan1_active = true;
+        fdcan2_active = true;
+        HAL_FDCAN_Start(&hfdcan1);
+        HAL_FDCAN_Start(&hfdcan2);
+    }
+    
+    // Пин PB6 (Джампер 0) опрашивается отдельно при настройке регистров таймингов FDCAN в файле main.c:
+    // if (HAL_GPIO_ReadPin(CONFIG_PORT_B, CONFIG_PIN_BIT0) == GPIO_PIN_RESET) { set_can_2mbit(); } else { set_can_4mbit(); }
+    
+    // Пины PB7 и PB0 — считываются, но не участвуют в логике (Резерв)
+}
 
