@@ -113,7 +113,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   */
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-    if (hspi->Instance == SPI3)
+    if (hspi->Instance == SPI1)
     {
         /* 1. Аппаратная проверка контрольной суммы прилетевшего каванта траектории */
         uint32_t words_to_calc = (sizeof(CNC_Packet_t) - 2) / 4;
