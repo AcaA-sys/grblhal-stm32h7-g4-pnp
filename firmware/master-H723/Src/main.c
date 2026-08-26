@@ -279,3 +279,48 @@ static void MX_USART2_UART_Init(void)
     huart2.Init.BaudRate = RS485_BAUDRATE;
     huart2.Init.WordLength = UART_WORDLENGTH_8B;
     huart2.Init.StopBits = UART_STOPBITS_1B;
+ huart2.Init.Parity = UART_PARITY_NONE;
+huart2.Init.Mode = UART_MODE_TX_RX;
+huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+HAL_UART_Init(&huart2);
+}
+/**
+•	@brief Инициализация базовых доменов DMA для скоростных транзакций шин
+•	@retval None
+/
+static void MX_DMA_Init(void)
+{
+/ Включение тактирования DMA контроллеров */
+__HAL_RCC_DMA1_CLK_ENABLE();
+__HAL_RCC_DMA2_CLK_ENABLE();/* Настройка прерываний DMA для SPI2_TX и SPI2_RX */
+HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 1, 0);
+HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 1, 0);
+HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+}
+/**
+•	@brief Аппаратный обработчик аварии: вызывается мгновенно при падении READY от хаба G474
+•	@retval None
+*/
+void EXTI3_IRQHandler(void)
+{
+HAL_GPIO_EXTI_IRQHandler(READY_PIN);/* МГНОВЕННЫЙ БЛОКИРУЮЩИЙ АВАРИЙНЫЙ ОСТАНОВ grblHAL */
+// Переводим планировщик ЧПУ в режим критического отказа, полностью блокируя моторы
+sys.state = STATE_ALARM;// Выключаем ШИМ или сигналы шагов, если они были активны
+memset(spi_tx_packet.positions, 0, sizeof(spi_tx_packet.positions));
+spi_tx_packet.machine_state = STATE_ALARM;
+}
+/**
+•	@brief Инициализация аппаратного DWT счетчика тактов ядра
+•	@retval None
+*/
+void master_dwt_init(void)
+{
+CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+DWT->CTRL |= DWT_CTRL_CYCCNTMsk;
+}
+
+
