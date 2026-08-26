@@ -1,1 +1,106 @@
-
+json{
+  "board_name": "PnP-14AX-G474-HUB-V2",
+  "mcu": {
+    "vendor": "STMicroelectronics",
+    "family": "STM32G4",
+    "part_number": "STM32G474CBT6",
+    "package": "LQFP48",
+    "core": "Cortex-M4",
+    "frequency_mhz": 170
+  },
+  "clock_system": {
+    "hse_source": "Bypass",
+    "hse_frequency_mhz": 25.0,
+    "input_pin": "PF0",
+    "hardware_reset_link": "PG10-NRST_driven_by_PD13_Master_H723",
+    "note": "Тактовое поле синхронизировано. Хаб удерживается в состоянии сброса мастером до полной стабилизации меандра 25 МГц от MCO1"
+  },
+  "power_system": {
+    "vdda_vref_stabilization": "External VREF+",
+    "source": "REF3033",
+    "voltage_v": 3.3,
+    "note": "Аналоговое питание изолировано прецизионным ИОН для стабилизации фазы данных CAN FD"
+  },
+  "inter_processor_link": {
+    "interface": "SPI1",
+    "mode": "Slave",
+    "dma_mode": "Circular",
+    "packet_size_bytes": 64,
+    "frequency_khz": 2000,
+    "pinout": {
+      "SPI1_NSS": "PA4",
+      "SPI1_SCK": "PA5",
+      "SPI1_MISO": "PA6",
+      "SPI1_MOSI": "PA7"
+    }
+  },
+  "safety_and_control": {
+    "line_name": "READY",
+    "pin": "PB2",
+    "mode": "GPIO_Output_PushPull",
+    "initial_state": "Low",
+    "note": "Аппаратный триггер экстренного останова мастера H723 при аварии в кабель-канале головки"
+  },
+  "hardware_configurator": {
+    "purpose": "Чтение аппаратной конфигурации платы, ревизии и типа головы при старте",
+    "pull_up_resistor": "10k_to_3.3V",
+    "active_state": "Low_When_Jumper_Closed",
+    "bit_mapping": {
+      "BIT_0": "PB6",
+      "BIT_1": "PB7",
+      "BIT_2": "PB0",
+      "BIT_3": "PC13"
+  },
+  "peripherals": {
+    "can_fd_1": {
+      "name": "FDCAN1",
+      "purpose": "Магистраль Портала (Тяжелая медь, 2 BLDC мотора X/Y)",
+      "pins": {
+        "TX": "PA12",
+        "RX": "PA11"
+      },
+      "transceiver": "NSiP1042",
+      "bitrate_arbitration_mbps": 1.0,
+      "bitrate_data_mbps": 4.0,
+      "mode": "Cyclic_2kHz"
+    },
+     "can_fd_2": {
+      "name": "FDCAN2",
+      "purpose": "Магистраль Умной Головки (Высокоскоростная оптика, 8 сопел + датчики)",
+      "pins": {
+        "TX": "PB13",
+        "RX": "PB12"
+      },
+	      "can_fd_3": {
+      "name": "FDCAN3",
+      "purpose": "Магистраль Умной Головки (Тяжелая медь, 4 сопела)",
+      "pins": {
+        "TX": "PB4",
+        "RX": "PB3"
+      },
+      "transceiver": "Optical_Transmitter_Receiver",
+      "bitrate_arbitration_mbps": 1.0,
+      "bitrate_data_mbps": 4.0,
+      "mode": "Cyclic_2kHz"
+    }
+  },
+  "hardware_indicators": {
+    "led_drivers": "led",
+    "pins": {
+      "PA0": "CAN1_ACT",
+      "PA1": "CAN2_ACT",
+      "PC14": "CAN3_ACT",
+      "PC15": "SECRET_STATUS"
+    },
+    "control_mode": "Hardware_Timers_One_Pulse_30ms"
+  },
+  "anti_counterfeit_security": {
+    "line_name": "B1",
+    "purpose": "Аналоговая секретка защиты от копирования (Вход АЦП)",
+    "pin": "PB11",
+    "hardware_channel": "ADC1_IN14",
+    "channel_type": "Slow_Channel",
+    "sampling_time_ticks": 92.5,
+    "circuit": "R86(1k) + C102(10n) + L8(100uH) + BAT54S"
+  }
+}
