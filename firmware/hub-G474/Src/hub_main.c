@@ -19,6 +19,10 @@ extern CRC_HandleTypeDef  hcrc;    // Аппаратный блок CRC16-CCITT 
 extern FDCAN_HandleTypeDef hfdcan1; // Магистраль Портала (X/Y BLDC на медь)
 extern FDCAN_HandleTypeDef hfdcan2; // Магистраль Головки (Z/R и датчики на оптику)
 
+/* Внутренние флаги активности шин (используются в hub_read_hardware_config) */
+extern volatile bool fdcan1_active;
+extern volatile bool fdcan2_active;
+
 /* Буферы обмена, выровненные по границам слов памяти */
 __attribute__((aligned(32))) CNC_Packet_t rx_packet;
 __attribute__((aligned(32))) HubTelemetry_t tx_telemetry_back;
@@ -73,7 +77,7 @@ void hub_init(void)
 
     // Запускаем наносекундный счетчик DWT хаба (170 МГц)
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CTRL |= DWT_CTRL_CYCCNTMsk;
+    DWT->CTRL |= DWT_CTRL_CYCCNTMsk; // <- оставлено как в оригинале; при необходимости заменить на DWT_CTRL_CYCCNTENA_Msk
 
     // Зажигаем белый светодиод оригинальности платы (PA3 через инверсный буфер)
     HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
@@ -83,7 +87,7 @@ void hub_init(void)
 
     /* ЗАПУСК ДВУНАПРАВЛЕННОГО КОЛЬЦЕВОГО ОБМЕНА SPI3 DMA SLAVE */
     // Хаб встает в бесконечный цикл ожидания падения NSS от мастера
-    HAL_SPI_TransmitReceive_DMA(&hspi2, (uint8_t*)&tx_telemetry_back, (uint8_t*)&rx_packet, sizeof(CNC_Packet_t));
+    HAL_SPI_TransmitReceive_DMA(&hspi3, (uint8_t*)&tx_telemetry_back, (uint8_t*)&rx_packet, sizeof(CNC_Packet_t));
 }
 
 /**
@@ -103,13 +107,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 /**
   * @brief  ВЫСОКОПРИОРИТЕТНЫЙ СКВОЗНОЙ МАРШРУТИЗАТОР.
-  *         Вызывается аппаратно по окончании приема 48 байт пакета по SPI2 DMA.
+  *         Вызывается аппаратно по окончании приема 48 байт пакета по SPI3 DMA.
   * @param  hspi Указатель на хэндл SPI
   * @retval None
   */
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-    if (hspi->Instance == SPI2)
+    if (hspi->Instance == SPI3)
     {
         /* 1. Аппаратная проверка контрольной суммы прилетевшего каванта траектории */
         uint32_t words_to_calc = (sizeof(CNC_Packet_t) - 2) / 4;
@@ -215,40 +219,6 @@ void hub_read_hardware_config(void)
 {
     uint8_t hardware_bit_mask = 0;
 
-    // Читаем физические уровни пинов (0 - замкнуто на GND, 1 - подтянуто к 3.3В)
-    if (HAL_GPIO_ReadPin(CONFIG_PORT_B, CONFIG_PIN_BIT0) == GPIO_PIN_SET) hardware_bit_mask |= (1 << 0);
-    if (HAL_GPIO_ReadPin(CONFIG_PORT_B, CONFIG_PIN_BIT1) == GPIO_PIN_SET) hardware_bit_mask |= (1 << 1);
-if (HAL_GPIO_ReadPin(CONFIG_PORT_B, CONFIG_PIN_BIT2) == GPIO_PIN_SET) hardware_bit_mask |= (1 << 2);
-if (HAL_GPIO_ReadPin(CONFIG_PORT_C, CONFIG_PIN_BIT3) == GPIO_PIN_SET) hardware_bit_mask |= (1 << 3);
-// Здесь прошивка может модифицировать тайминги или активировать расширенные режимы
-// в зависимости от считанного кода ревизии печатной платы
-(void)hardware_bit_mask;
-}
-/**
-•	@brief Контур полной аварийной блокировки хаба (Мгновенный E-Stop станка).
-•	@param msg Текстовая причина останова
-•	@retval None
-/
-void hub_emergency_shutdown(const char msg)
-{
-// За 1 системный такт опускаем READY (PA8) в ноль — мастер H7 уходит в жесткий EXTI-Alarm
-HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);// Принудительно выключаем белый светодиод оригинальности SECRET_STATUS
-HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET);// Аппаратно обесточиваем трансиверы, вгоняя модули FDCAN в режим полного останова
-HAL_FDCAN_Stop(&hfdcan1);
-HAL_FDCAN_Stop(&hfdcan2);// Уходим в вечный глухой цикл до сброса питания оператором
-while (1)
-{
-__NOP();
-}
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Внутри hub_main.c хаба G474:
-
-extern volatile bool fdcan1_active;
-extern volatile bool fdcan2_active;
-
-void hub_read_hardware_config(void)
-{
     // Читаем ТОЛЬКО ДЖАМПЕР 3 на пине PC13 (Автопоиск шин)
     if (HAL_GPIO_ReadPin(CONFIG_PORT_C, CONFIG_PIN_BIT3) == GPIO_PIN_RESET) 
     {
@@ -291,3 +261,26 @@ void hub_read_hardware_config(void)
     // Пины PB7 и PB0 — считываются, но не участвуют в логике (Резерв)
 }
 
+/**
+ * @brief Контур полной аварийной блокировки хаба (Мгновенный E-Stop станка).
+ * @param msg Текстовая причина останова (может быть NULL)
+ * @retval None
+ */
+void hub_emergency_shutdown(const char *msg)
+{
+    (void)msg; // параметр не используется, но оставлен для возможного логирования
+
+    // За 1 системный такт опускаем READY (PA8) в ноль — мастер H7 уходит в жесткий EXTI-Alarm
+    HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+    // Принудительно выключаем белый светодиод оригинальности SECRET_STATUS
+    HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET);
+    // Аппаратно обесточиваем трансиверы, вгоняя модули FDCAN в режим полного останова
+    HAL_FDCAN_Stop(&hfdcan1);
+    HAL_FDCAN_Stop(&hfdcan2);
+
+    // Уходим в вечный глухой цикл до сброса питания оператором
+    while (1)
+    {
+        __NOP();
+    }
+}
