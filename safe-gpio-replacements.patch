@@ -1,0 +1,71 @@
+-----НАЧАЛО ПАТЧА----- От aade322e4334ab0bffe8c8f8aab9091d3843b886 Пн, 17 сен 2001 00:00:00 От: fixbot fix@copilot Дата: Чт, 27 авг 2026 03:28:51 +0000 Тема: [ПАТЧ] Безопасные обертки GPIO: заменить прямые вызовы HAL GPIO на *_SAFE
+
+firmware/hub-G474/Src/hub_main.c | 6 +++--- firmware/master-H723/Security/sec_crypto.c | 12 ++++++++++-- firmware/master-H723/Src/main.c | 7 ++++++- 3 файла изменено, 20 добавлений(+), 5 удалений(-)
+
+--- a/firmware/hub-G474/Src/hub_main.c +++ b/firmware/hub-G474/Src/hub_main.c @@ -46,12 +46,12 @@ void hub_init(void)
+
+HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+
+// Читаем DIP-переключатели или Solder-перемычки железного конфигуратораhub_read_hardware_config(); @@ -80,7 +80,7 @@ voidhub_init(void) // Запускаем наносекундный счетчик DWT хаба (170 МГц) CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; // Включаем счетчик циклов
+
+// Зажигаем белый светодиод оригинальной платы (PA3 через инверсный буфер)
+
+HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
+HAL_GPIO_WRITE_SAFE(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
+
+// Поднимаем линию READY (PB2) в состоянии HIGH — даем мастеру H723 зеленый свет на старте grblHAL
+
+HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_SET);
+HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_SET);
+
+/* ЗАПУСК ДВУНАПРАВЛЕННОГО КОЛЬЦЕВОГО ОБМЕНА SPI1 DMA SLAVE / // Хаб встает в бесконечные циклические ожидания падения NSS от мастера HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t )&tx_telemetry_back, (uint8_t*)&rx_packet, sizeof(CNC_Packet_t)); } @@ voidhub_emergency_shutdown(const char *msg) {(void)msg; // параметр не используется, но оставлен для возможного логирования
+
+// За 1 системный такт опускаем READY (PA8) в ноль — мастер H7 уходит в жесткую EXTI-Alarm
+
+HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_RESET); // Принудительно выключаем белый светодиод оригинальности SECRET_STATUS
+HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET);
+HAL_GPIO_WRITE_SAFE(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET); // Аппарат обесточиваем трансиверы, вгоние модулей FDCAN в режим полной остановки HAL_FDCAN_Stop(&hfdcan1); HAL_FDCAN_Stop(&hfdcan2);
+
+// Уходим в последний глухой цикл для сброса питания оператором while (1) { __NOP(); } } --- a/firmware/master-H723/Security/sec_crypto.c +++ b/firmware/master-H723/Security/sec_crypto.c @@ -92,19 +92,29 @@ void sec_crypto_init(void)
+
+// Снимаем аппаратную защиту записи памяти, прижимая пин WP к земле (0)
+HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_RESET);
+// Снимаем аппаратную защиту записи памяти, прижимая пин WP к земле (0)
+HAL_GPIO_WRITE_SAFE(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_RESET); HAL_Delay(2); // Время релаксации переключателя памяти
+@@
+
+// Возвращаем аппаратную блокировку записей памяти WP в состоянии HIGH (Защищено)
+HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_SET);
+// Возвращаем аппаратную блокировку записей памяти WP в состоянии HIGH (Защищено)
+HAL_GPIO_WRITE_SAFE(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_SET); #else is_counterfeit_board = false; is_counterfeit_bricked = false; #endif } @@ void sec_update_startup_counter(void) { #if ENABLE_SECURITY_SUBSYSTEM if (is_counterfeit_board && !is_counterfeit_bricked) { uint8_t count_buf = 0;
+Код
+   HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_RESET);
+Код
+   HAL_GPIO_WRITE_SAFE(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_RESET);
+   HAL_Delay(2);
+
+   // Считываем текущий остаток запусков
+   if (HAL_I2C_Mem_Read(&hi2c1, EEPROM_DEVICE_ADDR, SEC_STARTUP_COUNT_ADDR, I2C_MEMADD_SIZE_16BIT, &count_buf, 1, 100) == HAL_OK) {
+       if (count_buf > 0) {
+           count_buf--; // Уменьшаем количество оставшихся безопасных дней/включений
+           // Перезаписываем ячейку в EEPROM
+           HAL_I2C_Mem_Write(&hi2c1, EEPROM_DEVICE_ADDR, SEC_STARTUP_COUNT_ADDR, I2C_MEMADD_SIZE_16BIT, &count_buf, 1, 100);
+           HAL_Delay(5); // Аппаратный цикл записи страницы памяти (t_WR)
+       }
+       if (count_buf == 0) {
+           is_counterfeit_bricked = true; // Лимит исчерпан, станок переходит в режим деградации
+       }
+   }
+Код
+   HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_SET);
+Код
+   HAL_GPIO_WRITE_SAFE(EEPROM_WP_PORT, EEPROM_WP_PIN, GPIO_PIN_SET);
+} #endif } *** Конец патча-----
+
+//Сохраните этот файл как safe-gpio-replacements.patch и примените его с помощью:
+//git checkout fix/gpio-safety
+//git apply safe-gpio-replacements.patch
+//git add -A
+//git commit -m "chore(gpio): use HAL_GPIO_*_SAFE wrappers and fix sec_crypto pointer bugs"
