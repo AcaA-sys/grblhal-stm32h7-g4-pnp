@@ -150,6 +150,12 @@
 //#define VACUUM4_PIN  GPIO_PIN_1 // PC1 (ADC) / XGZP6847  10K/20K
 #define VBUS_DET_PIN GPIO_PIN_9 // PA9 (USB Sense) / 10K/10K
 
+//  Добавлен виртуальный резерв для датчиков вакуума сопел XGZP6847  10K/20K
+#define VACUUM3_PIN                GPIO_NUM_NC // Оцифровывается на башне (передача по CAN FD2)
+#define VACUUM4_PIN                GPIO_NUM_NC // Оцифровывается на башне (передача по CAN FD2)
+#define VACUUM5_PIN                GPIO_NUM_NC // Оцифровывается на башне (передача по CAN FD2)
+#define VACUUM6_PIN                GPIO_NUM_NC // Оцифровывается на башне (передача по CAN FD2)
+
 // 10.1 MPG (аналоговый и энкодер)
 #define JOY_ADC_PORT GPIOB
 #define JOY_SCALE_PIN GPIO_PIN_0 // PB0 (ADC1_IN18) Аналоговый статус галетника множителей / 5.1K/10K
@@ -171,6 +177,27 @@
 #define OUT2_PIN GPIO_PIN_13 // PE13 (TIM1_CH3)
 #define OUT3_PIN GPIO_PIN_14 // PE14 (TIM1_CH4)
 #define OUT4_PIN GPIO_PIN_15 // PE15 (TIM1_BKIN2)
+
+// ПЛК-клапанов 4-х сопел для grblHAL CAN FD2
+#define VALVE_VACUUM_PORT          GPIO_PORT_NC
+#define VALVE_BLOW_PORT            GPIO_PORT_NC
+
+#define NOZZLE1_VACUUM_PIN         GPIO_NUM_NC // Управление вакуумом сопла 1
+#define NOZZLE1_BLOW_PIN           GPIO_NUM_NC // Управление продувкой сопла 1
+
+#define NOZZLE2_VACUUM_PIN         GPIO_NUM_NC // Управление вакуумом сопла 2
+#define NOZZLE2_BLOW_PIN           GPIO_NUM_NC // Управление продувкой сопла 2
+
+#define NOZZLE3_VACUUM_PIN         GPIO_NUM_NC // Управление вакуумом сопла 3
+#define NOZZLE3_BLOW_PIN           GPIO_NUM_NC // Управление продувкой сопла 3
+
+#define NOZZLE4_VACUUM_PIN         GPIO_NUM_NC // Управление вакуумом сопла 4
+#define NOZZLE4_BLOW_PIN           GPIO_NUM_NC // Управление продувкой сопла 4
+
+//  Виртуализация верхнего LED-света камеры для grblHAL ---
+#define TOP_LIGHT_PORT             GPIO_PORT_NC
+#define TOP_LIGHT_PIN              GPIO_NUM_NC // ШИМ яркости транслируется по SPI -> CAN FD2
+
 
 //#define AUXOUTPUT5_PORT GPIOE // оптрон АТС / 74LVC2G07 + TLP291
 //#define AUXOUTPUT6_PORT GPIOE // оптрон АТС / 74LVC2G07 + TLP291
