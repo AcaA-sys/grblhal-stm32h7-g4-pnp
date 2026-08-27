@@ -41,6 +41,9 @@ static void MX_ADC1_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_USART2_UART_Init(void);
 
+/* Прототип дополнительных локальных функций */
+void master_dwt_init(void);
+
 /**
   * @brief  Главная точка входа в программу.
   * @retval int
@@ -133,7 +136,7 @@ void SystemClock_Config(void)
                                  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
                                  |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-    RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
+    /* SYSCLKDivider не является полем в RCC_ClkInitTypeDef - удалено */
     RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;       /* AHB = 275 МГц */
     RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;     /* APB3 = 137.5 МГц */
     RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;     /* APB1 = 137.5 МГц */
@@ -223,7 +226,7 @@ static void MX_I2C1_Init(void)
     hi2c1.Instance = I2C1;
     hi2c1.Init.Timing = 0x00C03F5D; // Скорость 400 кГц (Fast Mode) при тактовой шины
     hi2c1.Init.OwnAddress1 = 0;
-    hi2c1.Init.AddressesMode = I2C_ADDRESSESMODE_7BIT;
+    hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT; /* исправлено (было I2C_ADDRESSESMODE_7BIT) */
     hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
     hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
     hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
@@ -278,97 +281,56 @@ static void MX_USART2_UART_Init(void)
     huart2.Instance = USART2;
     huart2.Init.BaudRate = RS485_BAUDRATE;
     huart2.Init.WordLength = UART_WORDLENGTH_8B;
-    huart2.Init.StopBits = UART_STOPBITS_1B;
- huart2.Init.Parity = UART_PARITY_NONE;
-huart2.Init.Mode = UART_MODE_TX_RX;
-huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-HAL_UART_Init(&huart2);
+    huart2.Init.StopBits = UART_STOPBITS_1; /* исправлено (было UART_STOPBITS_1B) */
+    huart2.Init.Parity = UART_PARITY_NONE;
+    huart2.Init.Mode = UART_MODE_TX_RX;
+    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+    huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+    HAL_UART_Init(&huart2);
 }
+
 /**
-•	@brief Инициализация базовых доменов DMA для скоростных транзакций шин
-•	@retval None
-/
+  * @brief Инициализация базовых доменов DMA для скоростных транзакций шин
+  * @retval None
+  */
 static void MX_DMA_Init(void)
 {
-/ Включение тактирования DMA контроллеров */
-__HAL_RCC_DMA1_CLK_ENABLE();
-__HAL_RCC_DMA2_CLK_ENABLE();/* Настройка прерываний DMA для SPI2_TX и SPI2_RX */
-HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 1, 0);
-HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
-HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 1, 0);
-HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+    /* Включение тактирования DMA контроллеров */
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    __HAL_RCC_DMA2_CLK_ENABLE();
+
+    /* Настройка прерываний DMA для SPI2_TX и SPI2_RX */
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 }
+
 /**
-•	@brief Аппаратный обработчик аварии: вызывается мгновенно при падении READY от хаба G474
-•	@retval None
-*/
+  * @brief Аппаратный обработчик аварии: вызывается мгновенно при падении READY от хаба G474
+  * @retval None
+  */
 void EXTI3_IRQHandler(void)
 {
-HAL_GPIO_EXTI_IRQHandler(READY_PIN);/* МГНОВЕННЫЙ БЛОКИРУЮЩИЙ АВАРИЙНЫЙ ОСТАНОВ grblHAL */
-// Переводим планировщик ЧПУ в режим критического отказа, полностью блокируя моторы
-sys.state = STATE_ALARM;// Выключаем ШИМ или сигналы шагов, если они были активны
-memset(spi_tx_packet.positions, 0, sizeof(spi_tx_packet.positions));
-spi_tx_packet.machine_state = STATE_ALARM;
+    HAL_GPIO_EXTI_IRQHandler(READY_PIN);
+    /* МГНОВЕННЫЙ БЛОКИРУЮЩИЙ АВАРИЙНЫЙ ОСТАНОВ grblHAL */
+    // Переводим планировщик ЧПУ в режим критического отказа, полностью блокируя моторы
+    sys.state = STATE_ALARM;
+    // Выключаем ШИМ или сигналы шагов, если они были активны
+    memset(spi_tx_packet.positions, 0, sizeof(spi_tx_packet.positions));
+    spi_tx_packet.machine_state = STATE_ALARM;
 }
+
 /**
-•	@brief Инициализация аппаратного DWT счетчика тактов ядра
-•	@retval None
-*/
+  * @brief Инициализация аппаратного DWT счетчика тактов ядра
+  * @retval None
+  */
 void master_dwt_init(void)
 {
-CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-DWT->CTRL |= DWT_CTRL_CYCCNTMsk;
-}
-
-//на стороне Мастера (STM32H723) изменения в код инициализации мастера, чтобы задействовать физическую линию сброса:
-int main(void)
-{
-    HAL_Init();
-    
-    /* 1. ПЕРВЫМ ДЕЛОМ ВГОНЯЕМ ХАБ В ЖЕСТКИЙ СБРОС */
-    // Настраиваем PD13 на выход и прижимаем к нулю
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_13;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET); // Хаб заперт в Reset
-
-    /* 2. Спокойно настраиваем такты мастера 550 МГц и включаем MCO1 (25 МГц) */
-    SystemClock_Config();
-    master_dwt_init();
-
-    /* Инициализация остальной периферии мастера... */
-    MX_DMA_Init();
-    MX_SPI2_Init();
-    MX_I2C1_Init();
-    
-    /* 3. ДАЕМ СТАБИЛИЗИРОВАТЬСЯ ЧАСТОТЕ MCO1 И ОТПУСКАЕМ СБРОС ХАБА */
-    HAL_Delay(10); // Пауза 10 мс
-    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET); // Хаб G474 просыпается!
-
-    /* 4. Ждем, пока хаб инициализирует ФАПЧ 170 МГц и поднимет линию READY (PD3) */
-    uint32_t startup_timeout = HAL_GetTick();
-    while (HAL_GPIO_ReadPin(READY_PORT, READY_PIN) == GPIO_PIN_RESET) {
-        if ((HAL_GetTick() - startup_timeout) > 500) {
-            // Если хаб не ответил за 500 мс — уходим в критическую аварию
-            sys.state = STATE_ALARM;
-            break;
-        }
-    }
-
-    /* 5. Запуск основного ядра ЧПУ */
-    grbl_init();
-    
-    while (1) {
-        grbl_run();
-        // ... фоновые воркеры ...
-    }
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; /* исправлено: правильный бит маски */
 }
 
 
