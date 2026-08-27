@@ -20,6 +20,11 @@
 #define GPIO_NUM_NC 0xFFFFU
 #endif
 
+/* Sentinel for an invalid/unused GPIO port pointer */
+#ifndef GPIO_PORT_NC
+#define GPIO_PORT_NC ((GPIO_TypeDef *)0)
+#endif
+
 // 1. ТАКТИРОВАНИЕ ( 25МГц)
 #define HSE_VALUE 25000000UL
 
@@ -29,8 +34,8 @@
 
 // 2. ВИРТУАЛИЗАЦИЯ ОСЕЙ ДВИЖЕНИЯ (Step / Dir)
 // Назначаем константу GPIO_NUM_NC. Кремниевые выводы процессора остаются свободными.
-#define STEP_PORT       NULL
-#define DIR_PORT        NULL
+#define STEP_PORT       GPIO_PORT_NC
+#define DIR_PORT        GPIO_PORT_NC
 
 #define X_STEP_PIN      GPIO_NUM_NC
 #define X_DIR_PIN       GPIO_NUM_NC
