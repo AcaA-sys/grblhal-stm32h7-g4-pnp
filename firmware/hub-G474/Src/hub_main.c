@@ -45,7 +45,7 @@ static uint8_t can_axis_payload[8];
 void hub_init(void)
 {
     // 1. По умолчанию при старте держим аварийную линию READY в состоянии LOW (Блокируем мастер)
-    HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_RESET);
 
     // Читаем DIP-переключатели или Solder-перемычки железного конфигуратора
     hub_read_hardware_config();
@@ -80,10 +80,10 @@ void hub_init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; // Enable cycle counter
 
     // Зажигаем белый светодиод оригинальности платы (PA3 через инверсный буфер)
-    HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
+    HAL_GPIO_WRITE_SAFE(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_RESET);
 
     // Поднимаем линию READY (PB2) в состояние HIGH — даем мастеру H723 зеленый свет на старт grblHAL
-    HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_SET);
 
     /* ЗАПУСК ДВУНАПРАВЛЕННОГО КОЛЬЦЕВОГО ОБМЕНА SPI1 DMA SLAVE */
     // Хаб встает в бесконечный цикл ожидания падения NSS от мастера
@@ -138,9 +138,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
             goto skip_fdcan2_head;
         }
 
-        // ==============================================================================
+        // ======================================================================
         // КАНАЛ 1: FDCAN1 — Магистраль Портала (BLDC моторы X и Y на меди)
-        // ==============================================================================
+        // ======================================================================
         // Вытаскиваем координаты X (positions[0]) и Y (positions[1])
         for (uint32_t i = 0; i < 2; i++)
         {
@@ -155,9 +155,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
             }
         }
 
-        // ==============================================================================
+        // ======================================================================
         // КАНАЛ 2: FDCAN2 — Магистраль Умной Головки (Оси Z1..Z4, R1..R2 на Оптике)
-        // ==============================================================================
+        // ======================================================================
         // Вытаскиваем оставшиеся 6 честных осей планировщика (Индексы 2..7)
         for (uint32_t i = 2; i < N_AXIS; i++)
         {
@@ -179,9 +179,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
             }
         }
 
-        // ==============================================================================
+        // ======================================================================
         // ЗАЛПОВЫЙ ВЫСТРЕЛ АППАРТНОГО SYNC ПАКЕТА (ID 0x000)
-        // ==============================================================================
+        // ======================================================================
         skip_fdcan2_head:
         // Все инфо-кадры уже лежат в Message RAM контроллеров CAN. Выдаем пусковой импульс.
         HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader_Sync, NULL);
@@ -220,7 +220,7 @@ void hub_read_hardware_config(void)
     uint8_t hardware_bit_mask = 0;
 
     // Читаем ТОЛЬКО ДЖАМПЕР 3 на пине PC13 (Автопоиск шин)
-    if (HAL_GPIO_ReadPin(CONFIG_PORT_C, CONFIG_PIN_BIT3) == GPIO_PIN_RESET) 
+    if (HAL_GPIO_READ_SAFE(CONFIG_PORT_C, CONFIG_PIN_BIT3) == GPIO_PIN_RESET) 
     {
         // --- РЕЖИМ АВТОПОИСКА АКТИВИРОВАН (Джампер PC13 на GND) ---
         // Пингуем FDCAN1 (Портал)
@@ -271,9 +271,9 @@ void hub_emergency_shutdown(const char *msg)
     (void)msg; // параметр не используется, но оставлен для возможного логирования
 
     // За 1 системный такт опускаем READY (PA8) в ноль — мастер H7 уходит в жесткий EXTI-Alarm
-    HAL_GPIO_WritePin(READY_PORT, READY_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WRITE_SAFE(READY_PORT, READY_PIN, GPIO_PIN_RESET);
     // Принудительно выключаем белый светодиод оригинальности SECRET_STATUS
-    HAL_GPIO_WritePin(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET);
+    HAL_GPIO_WRITE_SAFE(LED_PORT_C, LED_PIN_SECRET_STATUS, GPIO_PIN_SET);
     // Аппаратно обесточиваем трансиверы, вгоняя модули FDCAN в режим полного останова
     HAL_FDCAN_Stop(&hfdcan1);
     HAL_FDCAN_Stop(&hfdcan2);
