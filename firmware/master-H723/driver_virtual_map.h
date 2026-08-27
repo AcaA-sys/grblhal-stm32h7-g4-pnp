@@ -183,4 +183,22 @@
 // Отключение детекции VBUS на PA9 
 #define USB_VBUS_DETECTION_DISABLED
 
+// -----------------------------------------------------------------------------
+// Helper macros to safely call HAL GPIO functions when a port/pin may be NC
+// -----------------------------------------------------------------------------
+#ifndef HAL_GPIO_WRITE_SAFE
+#define HAL_GPIO_WRITE_SAFE(port, pin, val) \
+    do { if ((void*)(port) != (void*)GPIO_PORT_NC && (pin) != GPIO_NUM_NC) { HAL_GPIO_WritePin((port),(pin),(val)); } } while(0)
+#endif
+
+#ifndef HAL_GPIO_INIT_SAFE
+#define HAL_GPIO_INIT_SAFE(port, initptr) \
+    do { if ((void*)(port) != (void*)GPIO_PORT_NC) { HAL_GPIO_Init((port),(initptr)); } } while(0)
+#endif
+
+#ifndef HAL_GPIO_READ_SAFE
+#define HAL_GPIO_READ_SAFE(port, pin) \
+    (((void*)(port) == (void*)GPIO_PORT_NC || (pin) == GPIO_NUM_NC) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin((port),(pin)))
+#endif
+
 #endif /* _DRIVER_VIRTUAL_MAP_H_ */
