@@ -13,6 +13,34 @@
 #include "hub_config.h"
 #include <string.h>
 
+// Внутри функции инициализации FDCAN хаба головки/станины:
+
+void MX_FDCAN_DualSpeed_Init(void)
+{
+    /* ====== НАСТРОЙКА БЛОКА 1: МЕДНЫЙ CAN FD1 (4 Мбит/с) ====== */
+    hfdcan1.Instance = FDCAN1;
+    hfdcan1.Init.NominalPrescaler = 1;     // Арбитраж 1 Мбит/с (80 TQ)
+    hfdcan1.Init.NominalTimeSeg1 = 59;
+    hfdcan1.Init.NominalTimeSeg2 = 20;
+    
+    hfdcan1.Init.DataPrescaler = 1;        // Фаза данных строго 4 Мбит/с (20 TQ)
+    hfdcan1.Init.DataTimeSegment1 = 14;
+    hfdcan1.Init.DataTimeSegment2 = 5;
+    HAL_FDCAN_Init(&hfdcan1);
+
+    /* ====== НАСТРОЙКА БЛОКА 2: ОПТИЧЕСКИЙ CAN FD2 (5 Мбит/с) ====== */
+    hfdcan2.Instance = FDCAN2;
+    hfdcan2.Init.NominalPrescaler = 1;     // Арбитраж остается 1 Мбит/с для синхронизации
+    hfdcan2.Init.NominalTimeSeg1 = 59;
+    hfdcan2.Init.NominalTimeSeg2 = 20;
+    
+    hfdcan2.Init.DataPrescaler = 1;        // Разгон фазы данных оптики до 5 Мбит/с (16 TQ)
+    hfdcan2.Init.DataTimeSegment1 = 11;
+    hfdcan2.Init.DataTimeSegment2 = 4;
+    HAL_FDCAN_Init(&hfdcan2);
+}
+
+
 /* Экспорт аппаратных хэндлов периферии (CubeMX) */
 extern SPI_HandleTypeDef  hspi1;   // Slave Mode, Hardware NSS Enabled (PB12)
 extern CRC_HandleTypeDef  hcrc;    // Аппаратный блок CRC16-CCITT (Полином 0x1021)
