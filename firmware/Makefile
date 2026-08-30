@@ -1,15 +1,19 @@
 ################################################################################
 # АВТОНОМНЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.1)
-# Целевой микроконтроллер: STM32G474RET6 (Ядро Cortex-M4)
-# Репозиторий: Nexus-OPTIC-HUB-UART
-# Изменение: Линия Board ID BIT_3 успешно перенесена на пин PC14
+# Целевой микроконтроллер: STM32G474CBT6 (Маршрутизатор, 170 МГц)
+# Репозиторий: grblhal-stm32h7-g4-pnp
+# Назначение: Компиляция ядра hub_main.c с жесткой привязкой к структуре папок
 ################################################################################
 
-TARGET = nexus_hub_sense_v1.3
+TARGET = nexus_hub_g474_firmware
 OPT = -Os
 BUILD_DIR = build
 
-C_SOURCES = hub_main.c
+# Истинные пути к исходным кодам репозитория
+SRC_DIR = Src
+INC_DIR = Inc
+
+C_SOURCES = $(SRC_DIR)/hub_main.c
 
 PREFIX = arm-none-eabi-
 CC = $(PREFIX)gcc
@@ -19,16 +23,18 @@ SZ = $(PREFIX)size
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
  
+# Флаги архитектуры кристалла (Cortex-M4 + Hardware FPU)
 MCU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 C_DEFS = -DSTM32G474xx -DUSE_HAL_DRIVER
 
-C_INCLUDES = -I. -IInc -Iinc -Ibuild
+# Пути поиска заголовочных файлов (Текущая папка, родная Inc и временная build)
+C_INCLUDES = -I. -I$(INC_DIR) -I$(BUILD_DIR)
 
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -c -ffreestanding
 
 all: $(BUILD_DIR) $(BUILD_DIR)/driver_virtual_map.h $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-# АВТОГЕНЕРАЦИЯ ЗАКРЫТОЙ КАРТЫ ПИНОВ v1.3.1 ПРЯМО В ПАПКУ BUILD/ (ПИН PC14 ЗАФИКСИРОВАН)
+# АВТОГЕНЕРАЦИЯ ЗАКРЫТОЙ КАРТЫ ПИНОВ v1.3.1 СТРОГО В ПАПКУ BUILD/ ДЛЯ ОПЕРАЦИЙ КРИПТОЗАЩИТЫ
 $(BUILD_DIR)/driver_virtual_map.h:
 	@echo "Принудительная генерация закрытого эталонного файла driver_virtual_map.h v1.3.1..."
 	@echo '#ifndef DRIVER_VIRTUAL_MAP_H' > $(BUILD_DIR)/driver_virtual_map.h
@@ -87,8 +93,8 @@ $(BUILD_DIR)/driver_virtual_map.h:
 	@echo '#define OPT_INT3_PIN GPIO_PIN_7' >> $(BUILD_DIR)/driver_virtual_map.h
 	@echo '#endif' >> $(BUILD_DIR)/driver_virtual_map.h
 
-$(BUILD_DIR)/$(TARGET).o: $(BUILD_DIR)/driver_virtual_map.h
-	@echo "Целевой файл исходного кода: $(C_SOURCES)"
+$(BUILD_DIR)/$(TARGET).o: $(C_SOURCES) $(BUILD_DIR)/driver_virtual_map.h
+	@echo "Запуск честной машинной компиляции кода маршрутизатора..."
 	$(CC) $(C_SOURCES) $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o
 	$(SZ) $(BUILD_DIR)/$(TARGET).o
 
@@ -106,3 +112,4 @@ clean:
 	@rm -fR $(BUILD_DIR)
   
 .PHONY: all clean
+
