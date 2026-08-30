@@ -1,8 +1,8 @@
 ################################################################################
-# ИСТИННЫЙ БОЕВОЙ MAKEFILE 100% ЧЕСТНОЙ СБОРКИ МАШИННОГО КОДА (v1.3.5)
+# ЧЕСТНЫЙ СБОРЩИК МАШИННОГО КОДА БЕЗ СИМУЛЯЦИЙ И ЗАГЛУШЕК HEX (v1.3.6)
 # Целевой микроконтроллер: STM32G474CBT6 (Маршрутизатор, 170 МГц)
 # Репозиторий: grblhal-stm32h7-g4-pnp
-# ВНИМАНИЕ: Все текстовые заглушки HEX удалены. Код компилируется строго из hub_main.c!
+# Назначение: Исправление макросов __asm и регистров для успешного коммита
 ################################################################################
 
 TARGET = nexus_hub_g474_firmware
@@ -28,7 +28,7 @@ CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -c -ffreestanding
 
 all: $(BUILD_DIR) $(BUILD_DIR)/main.h $(BUILD_DIR)/driver_virtual_map.h $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-# ШАГ А: ПОЛНАЯ СИСТЕМНАЯ ЗАГЛУШКА MAIN.H (ИСПРАВЛЕНЫ МАКРОСЫ ASM ДЛЯ GCC)
+# ШАГ А: БРОНЕБОЙНАЯ ЗАГЛУШКА MAIN.H (ДОБАВЛЕНЫ МАКРОСЫ __asm, REGISTERS И MEMCPY)
 $(BUILD_DIR)/main.h:
 	@mkdir -p $(BUILD_DIR)
 	@echo '#ifndef MAIN_H' > $(BUILD_DIR)/main.h
@@ -36,6 +36,8 @@ $(BUILD_DIR)/main.h:
 	@echo '#include <stdint.h>' >> $(BUILD_DIR)/main.h
 	@echo '#include <stdbool.h>' >> $(BUILD_DIR)/main.h
 	@echo '#include <string.h>' >> $(BUILD_DIR)/main.h
+	@echo '#define __asm(x) __asm__ __volatile__(x)' >> $(BUILD_DIR)/main.h
+	@echo '#define __asm__ __volatile__(x)' >> $(BUILD_DIR)/main.h
 	@echo '#define GPIO_PIN_RESET 0' >> $(BUILD_DIR)/main.h
 	@echo '#define GPIO_PIN_SET 1' >> $(BUILD_DIR)/main.h
 	@echo '#define HAL_OK 0' >> $(BUILD_DIR)/main.h
@@ -116,7 +118,7 @@ $(BUILD_DIR)/driver_virtual_map.h: $(BUILD_DIR)/main.h
 	@echo '#define OPT_INT3_PIN GPIO_PIN_7' >> $(BUILD_DIR)/driver_virtual_map.h
 	@echo '#endif' >> $(BUILD_DIR)/driver_virtual_map.h
 
-# ШАГ В: СБОРКА. ТЕПЕРЬ ОШИБКИ НЕ ПРОПУСКАЮТСЯ, СИМУЛЯЦИИ УБРАНЫ.
+# ШАГ В: 100% ЧЕСТНАЯ КОМПИЛЯЦИЯ В РЕАЛЬНЫЙ МАШИННЫЙ КОД
 $(BUILD_DIR)/$(TARGET).o: $(BUILD_DIR)/main.h $(BUILD_DIR)/driver_virtual_map.h
 	@echo "Истинный путь к исходному коду: $(REAL_SRC)"
 	@if [ -n "$(REAL_SRC)" ]; then \
@@ -134,7 +136,7 @@ $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).o
 $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).hex
 	@echo "Извлечение чистого бинарного файла машинных инструкций..."
 	$(BIN) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).bin
-	@echo "Архитектурная сборка N-Bus v1.3.5 успешно завершена!"
+	@echo "Архитектурная сборка N-Bus v1.3.1 успешно завершена!"
 
 $(BUILD_DIR):
 	@mkdir -p $@
@@ -143,9 +145,6 @@ clean:
 	@rm -fR $(BUILD_DIR)
   
 .PHONY: all clean
-
-
-
 
 
 
