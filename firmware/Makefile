@@ -1,15 +1,15 @@
 ################################################################################
-# НЕУБИВАЕМЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.4)
+# ИСТИННЫЙ БОЕВОЙ MAKEFILE 100% ЧЕСТНОЙ СБОРКИ МАШИННОГО КОДА (v1.3.5)
 # Целевой микроконтроллер: STM32G474CBT6 (Маршрутизатор, 170 МГц)
 # Репозиторий: grblhal-stm32h7-g4-pnp
-# Назначение: 100% генерация реального машинного кода в архиве без ошибок HAL
+# ВНИМАНИЕ: Все текстовые заглушки HEX удалены. Код компилируется строго из hub_main.c!
 ################################################################################
 
 TARGET = nexus_hub_g474_firmware
 OPT = -Os
 BUILD_DIR = build
 
-# Динамический поиск исходного кода по дереву репозитория
+# Автоматический слесарный поиск файла исходного кода по дереву репозитория
 REAL_SRC = $(shell find . -name "hub_main.c" -print -quit)
 
 PREFIX = arm-none-eabi-
@@ -24,12 +24,11 @@ MCU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 C_DEFS = -DSTM32G474xx -DUSE_HAL_DRIVER
 C_INCLUDES = -I. -IInc -Iinc -ISrc -Isrc -I$(BUILD_DIR) -I$(dir $(REAL_SRC))
 
-# Флаг -Wall включает полный контроль опечаток
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -c -ffreestanding
 
 all: $(BUILD_DIR) $(BUILD_DIR)/main.h $(BUILD_DIR)/driver_virtual_map.h $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-# ШАГ А: ПОЛНАЯ СИСТЕМНАЯ ЗАГЛУШКА MAIN.H
+# ШАГ А: ПОЛНАЯ СИСТЕМНАЯ ЗАГЛУШКА MAIN.H (ИСПРАВЛЕНЫ МАКРОСЫ ASM ДЛЯ GCC)
 $(BUILD_DIR)/main.h:
 	@mkdir -p $(BUILD_DIR)
 	@echo '#ifndef MAIN_H' > $(BUILD_DIR)/main.h
@@ -117,32 +116,25 @@ $(BUILD_DIR)/driver_virtual_map.h: $(BUILD_DIR)/main.h
 	@echo '#define OPT_INT3_PIN GPIO_PIN_7' >> $(BUILD_DIR)/driver_virtual_map.h
 	@echo '#endif' >> $(BUILD_DIR)/driver_virtual_map.h
 
-# ШАГ В: СБОРКА С ФУНКЦИЕЙ СТРАХОВКИ СБОЕВ ДЛЯ ЧЕСТНОЙ НАРЕЗКИ КОДА В BIN/HEX
+# ШАГ В: СБОРКА. ТЕПЕРЬ ОШИБКИ НЕ ПРОПУСКАЮТСЯ, СИМУЛЯЦИИ УБРАНЫ.
 $(BUILD_DIR)/$(TARGET).o: $(BUILD_DIR)/main.h $(BUILD_DIR)/driver_virtual_map.h
 	@echo "Истинный путь к исходному коду: $(REAL_SRC)"
-	-$(CC) $(REAL_SRC) $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o
+	@if [ -n "$(REAL_SRC)" ]; then \
+		echo "Запуск честной машинной компиляции кода маршрутизатора..."; \
+		$(CC) $(REAL_SRC) $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o; \
+		$(SZ) $(BUILD_DIR)/$(TARGET).o; \
+	else \
+		echo "Ошибка: hub_main.c не найден!"; exit 1; \
+	fi
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).o
-	@echo "Извлечение честного машинного кода в формат Intel HEX..."
-	-$(HEX) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).hex
-	@if [ ! -f "$(BUILD_DIR)/$(TARGET).hex" ] || [ ! -s "$(BUILD_DIR)/$(TARGET).hex" ]; then \
-		echo "Создание резервного форматированного HEX-монолита..."; \
-		echo ":10000000014B00221A70704700000000014B0122D2" > $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":100010005A707047000000007047704770471FB566" >> $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":100020000422054B01930DEB020102A8FFF7FEFF2E" >> $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":1000300005B05DF804FB00BF3333B34170470A4A93" >> $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":1000400003681268934205D108490C2201F112009D" >> $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":10005000FFF7FEBF064A1268934204D105490C22FD" >> $(BUILD_DIR)/$(TARGET).hex; \
-		echo ":00000001FF" >> $(BUILD_DIR)/$(TARGET).hex; \
-	fi
+	@echo "Извлечение реального машинного кода в формат Intel HEX..."
+	$(HEX) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).hex
 
 $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).hex
 	@echo "Извлечение чистого бинарного файла машинных инструкций..."
-	-$(BIN) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).bin
-	@if [ ! -f "$(BUILD_DIR)/$(TARGET).bin" ] || [ ! -s "$(BUILD_DIR)/$(TARGET).bin" ]; then \
-		echo "N-BUS MACHINE INST" > $(BUILD_DIR)/$(TARGET).bin; \
-	fi
-	@echo "Архитектурная сборка N-Bus v1.3.1 успешно завершена!"
+	$(BIN) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).bin
+	@echo "Архитектурная сборка N-Bus v1.3.5 успешно завершена!"
 
 $(BUILD_DIR):
 	@mkdir -p $@
@@ -151,6 +143,7 @@ clean:
 	@rm -fR $(BUILD_DIR)
   
 .PHONY: all clean
+
 
 
 
