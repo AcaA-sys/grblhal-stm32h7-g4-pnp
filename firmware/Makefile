@@ -1,19 +1,16 @@
 ################################################################################
-# АВТОНОМНЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.1)
+# ПРЕЦИЗИОННЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.1)
 # Целевой микроконтроллер: STM32G474CBT6 (Маршрутизатор, 170 МГц)
 # Репозиторий: grblhal-stm32h7-g4-pnp
-# Назначение: Компиляция ядра hub_main.c с жесткой привязкой к структуре папок
+# Фикс: Прямой поиск hub_main.c в корне папки без виртуальных подкаталогов Src/
 ################################################################################
 
 TARGET = nexus_hub_g474_firmware
 OPT = -Os
 BUILD_DIR = build
 
-# Истинные пути к исходным кодам репозитория
-SRC_DIR = Src
-INC_DIR = Inc
-
-C_SOURCES = $(SRC_DIR)/hub_main.c
+# Исходный Си-код лежит прямо в каталоге рядом с Makefile
+C_SOURCES = hub_main.c
 
 PREFIX = arm-none-eabi-
 CC = $(PREFIX)gcc
@@ -27,14 +24,14 @@ BIN = $(CP) -O binary -S
 MCU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 C_DEFS = -DSTM32G474xx -DUSE_HAL_DRIVER
 
-# Пути поиска заголовочных файлов (Текущая папка, родная Inc и временная build)
-C_INCLUDES = -I. -I$(INC_DIR) -I$(BUILD_DIR)
+# Пути поиска заголовочных файлов (Текущая папка, папка Inc и временная build)
+C_INCLUDES = -I. -IInc -Iinc -I$(BUILD_DIR)
 
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -c -ffreestanding
 
 all: $(BUILD_DIR) $(BUILD_DIR)/driver_virtual_map.h $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-# АВТОГЕНЕРАЦИЯ ЗАКРЫТОЙ КАРТЫ ПИНОВ v1.3.1 СТРОГО В ПАПКУ BUILD/ ДЛЯ ОПЕРАЦИЙ КРИПТОЗАЩИТЫ
+# АВТОГЕНЕРАЦИЯ ЗАКРЫТОЙ КАРТЫ ПИНОВ v1.3.1 СТРОГО В ПАПКУ BUILD/
 $(BUILD_DIR)/driver_virtual_map.h:
 	@echo "Принудительная генерация закрытого эталонного файла driver_virtual_map.h v1.3.1..."
 	@echo '#ifndef DRIVER_VIRTUAL_MAP_H' > $(BUILD_DIR)/driver_virtual_map.h
@@ -112,4 +109,5 @@ clean:
 	@rm -fR $(BUILD_DIR)
   
 .PHONY: all clean
+
 
