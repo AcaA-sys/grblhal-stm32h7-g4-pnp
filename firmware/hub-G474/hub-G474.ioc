@@ -49,7 +49,7 @@ json{
       "BIT_0": "PB6",
       "BIT_1": "PB7",
       "BIT_2": "PB0",
-      "BIT_3": "PC13"
+      "BIT_3": "PC14"
   },
   "peripherals": {
     "can_fd_1": {
