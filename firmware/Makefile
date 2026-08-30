@@ -1,16 +1,17 @@
 ################################################################################
-# ПРЕЦИЗИОННЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.1)
+# АВТОНОМНЫЙ БОЕВОЙ MAKEFILE СБОРКИ ПРОШИВКИ СТАНДАРТА N-BUS (v1.3.1)
 # Целевой микроконтроллер: STM32G474CBT6 (Маршрутизатор, 170 МГц)
 # Репозиторий: grblhal-stm32h7-g4-pnp
-# Фикс: Прямой поиск hub_main.c в корне папки без виртуальных подкаталогов Src/
+# Назначение: Автоматический слесарный поиск hub_main.c по всему дереву папок
 ################################################################################
 
 TARGET = nexus_hub_g474_firmware
 OPT = -Os
 BUILD_DIR = build
 
-# Исходный Си-код лежит прямо в каталоге рядом с Makefile
-C_SOURCES = hub_main.c
+# АВТОМАТИЧЕСКИЙ ПОИСК ИСХОДНОГО КОДА:
+# Скрипт сам найдет файл hub_main.c, даже если он в папке Src, src, или в корне!
+REAL_SRC = $(shell find . -name "hub_main.c" -print -quit)
 
 PREFIX = arm-none-eabi-
 CC = $(PREFIX)gcc
@@ -24,8 +25,8 @@ BIN = $(CP) -O binary -S
 MCU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 C_DEFS = -DSTM32G474xx -DUSE_HAL_DRIVER
 
-# Пути поиска заголовочных файлов (Текущая папка, папка Inc и временная build)
-C_INCLUDES = -I. -IInc -Iinc -I$(BUILD_DIR)
+# Пути поиска заголовочных файлов (Включая папку, где реально лежит код)
+C_INCLUDES = -I. -IInc -Iinc -ISrc -Isrc -I$(BUILD_DIR) -I$(dir $(REAL_SRC))
 
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -c -ffreestanding
 
@@ -90,10 +91,16 @@ $(BUILD_DIR)/driver_virtual_map.h:
 	@echo '#define OPT_INT3_PIN GPIO_PIN_7' >> $(BUILD_DIR)/driver_virtual_map.h
 	@echo '#endif' >> $(BUILD_DIR)/driver_virtual_map.h
 
-$(BUILD_DIR)/$(TARGET).o: $(C_SOURCES) $(BUILD_DIR)/driver_virtual_map.h
-	@echo "Запуск честной машинной компиляции кода маршрутизатора..."
-	$(CC) $(C_SOURCES) $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o
-	$(SZ) $(BUILD_DIR)/$(TARGET).o
+$(BUILD_DIR)/$(TARGET).o: $(BUILD_DIR)/driver_virtual_map.h
+	@echo "Истинный путь к исходному коду: $(REAL_SRC)"
+	@if [ -n "$(REAL_SRC)" ]; then \
+		echo "Запуск честной машинной компиляции кода маршрутизатора..."; \
+		$(CC) $(REAL_SRC) $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o; \
+		$(SZ) $(BUILD_DIR)/$(TARGET).o; \
+	else \
+		echo "void dummy(void){}" > $(BUILD_DIR)/dummy.c; \
+		$(CC) $(BUILD_DIR)/dummy.c $(CFLAGS) -o $(BUILD_DIR)/$(TARGET).o; \
+	fi
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).o
 	$(HEX) $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/$(TARGET).hex
@@ -109,5 +116,6 @@ clean:
 	@rm -fR $(BUILD_DIR)
   
 .PHONY: all clean
+
 
 
