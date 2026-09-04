@@ -55,7 +55,7 @@
 | 0x286    | DRIVE_Z4_TELEMETRY | Drive-Z4    | Код энкодера A/B/Z осей Z4     |
 |          |                    |             |                                |
 | 0x310    | TOWER_V_AXIS       | Master      | Групповой макрос осей R1/R2    |
-| 0x311    | TOWER_STATUS       | Hub-Sense   | Оцифровка вакуума Vac_S1-S4    |
+| 0x311    | TOWER_STATUS       | Hub-Sense   | Оцифровка вакуума Vac_S1-S8    |
 |          |                    |             |                                |
 | 0x410    | ENV_DATA           | Hub-Sense   | Температура SHT35 + Давление P1|
 |          |                    | (+Master)   | (0.4 Бар) + Вакуум P2 (-1 Бар) |
