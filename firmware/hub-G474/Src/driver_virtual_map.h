@@ -1,11 +1,18 @@
 /**
   ********************************################################**************
   * @file    driver_virtual_map.h
-  * @brief   Аппаратная карта CAN ID, пинов и пневмо-контуров стандарта N-Bus (v1.3)
-  * @part    STM32G474RET6 (LQFP64) / Репозиторий: Nexus-OPTIC-HUB-UART
-  * @note    Добавлена поддержка шины FDCAN3 и джампера переключения башен PB7.
+  * @brief   Аппаратная карта CAN ID, пинов  стандарта N-Bus (v1.3)
+  * @part    STM32H723VBT6 (LQFP-100) 
   ********************************################################**************
   */
+
+#if N_ABC_MOTORS > 8
+#error "Nexus-H7-FD."
+#endif
+
+#if !(defined(STM32H723xx)) || HSE_VALUE != 25000000
+#error "This board has a STM32H723 processor with 25MHz crystal, select a corresponding build!"
+#endif
 
 #ifndef DRIVER_VIRTUAL_MAP_H
 #define DRIVER_VIRTUAL_MAP_H
@@ -15,9 +22,9 @@
 /* ========================================================================== */
 /* 1. ПОЛНАЯ МАТРИЦА АЛЛОКАЦИИ ИДЕНТИФИКАТОРОВ ШИНЫ N-BUS (СТАНДАРТ v1.3)     */
 /* ========================================================================== */
-#define CAN_ID_SYS_SYNC            0x010  // Глобальный тактовый синхроимпульс (Master)
-#define CAN_ID_RT_CORRECTION       0x050  // Активная наносекундная коррекция траектории X/Y
-#define CAN_ID_ACCEL_DATA          0x120  // Высокопрецизионный 20-бит поток вибрации головки
+//#define CAN_ID_SYS_SYNC            0x010  // Глобальный тактовый синхроимпульс (Master)
+//#define CAN_ID_RT_CORRECTION       0x050  // Активная наносекундная коррекция траектории X/Y
+//#define CAN_ID_ACCEL_DATA          0x120  // Высокопрецизионный 20-бит поток вибрации головки
 
 #define CAN_ID_DRIVE_X_BASE         0x201  // Уставка координаты/скорости оси X
 #define CAN_ID_DRIVE_Y_BASE         0x202  // Уставка координаты/скорости оси Y
@@ -53,7 +60,7 @@
 /* ========================================================================== */
 /* 2. ТРИ ИЗОЛИРОВАННЫХ ТЕХНОЛОГИЧЕСКИХ ДОМЕНА СЕТИ N-BUS   hub-G474          */
 /* ========================================================================== */
-#define HSE_CRYSTAL_FREQ_MHZ       24     // Внешний прецизионный кварц HSE хаба
+#define HSE_CRYSTAL_FREQ_MHZ       25     // Мастер (H723, 550 МГц) и Слейв (G474, 170 МГц) синхронизированы: кварц 25 МГц на мастере, выход MCO1 (PA8) -> HSE Bypass (PF0) на хабе
 #define CAN_PERIPH_CLK_MHZ         80     // Выровненная тактовая частота шин CAN после PLL
 
 // ДОМЕН 1: МЕДНЫЙ СИЛОВОЙ ДОМЕН СТАНИНЫ (CAN FD1) - БРОНЕБОЙНЫЕ 4 МБИТ/С
@@ -93,6 +100,38 @@
 #define DIAG_SYNC_OUT_PORT         GPIOB
 #define DIAG_SYNC_OUT_PIN          GPIO_PIN_2  // Ножка 26: PB2
 
+/////////////////
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PORT                  AUXINPUT2_PORT
+#define RESET_PIN                   AUXINPUT2_PIN
+#endif
+
+#define AUXINPUT0_ANALOG_PORT   GPIOA  // ANALOG //Src\driver.c   Строка  209:
+#define AUXINPUT0_ANALOG_PIN    0
+#define AUXINPUT1_ANALOG_PORT   GPIOA // ANALOG
+#define AUXINPUT1_ANALOG_PIN    1
+#define AUXINPUT2_ANALOG_PORT   GPIOA  // ANALOG
+#define AUXINPUT2_ANALOG_PIN    2
+#define AUXINPUT3_ANALOG_PORT   GPIOA // ANALOG
+#define AUXINPUT3_ANALOG_PIN    3
+#define AUXINPUT4_ANALOG_PORT   GPIOC  // ANALOG
+#define AUXINPUT4_ANALOG_PIN    4
+#define AUXINPUT5_ANALOG_PORT   GPIOC // ANALOG
+#define AUXINPUT5_ANALOG_PIN    5
+
+// Spindle PWM 
+#define AUXOUTPUT0_PORT             GPIOE   // - FAN0
+#define AUXOUTPUT0_PIN              9
+
+#define AUXOUTPUT1_PORT             GPIOE   // SPINDLE_PWM
+#define AUXOUTPUT1_PIN              14
+
+#define AUXOUTPUT2_PORT             GPIOC   // SPINDLE_ENABLE
+#define AUXOUTPUT2_PIN              -1
+
+#define AUXOUTPUT3_PORT             GPIOC   // 
+#define AUXOUTPUT3_PIN              -1
 /* ========================================================================== */
 /* 4. ДОМЕН ИЗМЕРИТЕЛЬНЫХ ДАТЧИКОВ ЛЕТАЮЩЕЙ БАШНИ ГОЛОВКИ                     */
 /* ========================================================================== */
@@ -123,6 +162,7 @@
 #define LIMIT_Z4_HOME_BIT      (1 << 3)  // Сработал концевик оси Z4
 #define LIMIT_X_HOME_BIT      (1 << 4)  // Сработал концевик оси X
 #define LIMIT_Y_HOME        // Сработал концевик оси Y
+
 
 // Битовые маркеры сервисной периферии (LED-подсветка головы)
 #define LED_MASK_MAIN_LIGHT    (1 << 0)  // 0x01: Включить бестеневой прожектор сопел
